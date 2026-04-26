@@ -1,0 +1,16 @@
+// Sentinel Rule: Detect High-Risk Sign-ins for DORA-Critical Roles
+// Requirement: DORA Article 9 (Protection and Prevention)
+// Focus: Detecting successful logins from non-compliant devices for sensitive roles.
+
+SigninLogs
+| where TimeGenerated > ago(24h)
+| where ResultType == 0 // Filter for successful logins only
+| where UserPrincipalName contains "admin" or UserPrincipalName contains "finance"
+| extend DeviceCompliance = tostring(DeviceDetail.isCompliant)
+| where DeviceCompliance == "false"
+| summarize AlertCount = count() by UserPrincipalName, IPAddress, Location, DeviceCompliance
+| project 
+    Timestamp = now(),
+    User = UserPrincipalName,
+    IP = IPAddress,
+    Msg = "CRITICAL ALERT: Non-compliant device access to Critical Function per DORA Article 9 compliance requirements."
